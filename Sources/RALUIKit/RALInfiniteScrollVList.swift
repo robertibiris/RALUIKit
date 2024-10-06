@@ -2,17 +2,24 @@
 // https://docs.swift.org/swift-book
 import SwiftUI
 
-struct RALInfiniteScrollVList<T:Identifiable, V: View>: View {
+public struct RALInfiniteScrollVList<T:Identifiable, V: View>: View {
     // public
-    enum ScrollDirection {
+    public enum ScrollDirection {
         case upward
         case downward
     }
     @Binding var items: [T]
-    let scrollDirection: ScrollDirection
+    public let scrollDirection: ScrollDirection
     // #takeaway @Sendable: Mark the closure as @Sendable to ensure that it’s safe to be run in concurrent contexts (although this is optional, it’s a good practice in modern Swift concurrency).
-    let fetchNextPage: @Sendable () async throws -> [T]
-    let itemViewProvider: (T) -> V
+    public let fetchNextPage: @Sendable () async throws -> [T]
+    public let itemViewProvider: (T) -> V
+    
+    public init(items: Binding<[T]>, scrollDirection: ScrollDirection, fetchNextPage: @escaping @Sendable () async throws -> [T], itemViewProvider: @escaping (T) -> V) {
+        self._items = items
+        self.scrollDirection = scrollDirection
+        self.fetchNextPage = fetchNextPage
+        self.itemViewProvider = itemViewProvider
+    }
 
     //private
     private let kScrollViewCoordSpaceName = "scroll_view"
@@ -21,12 +28,12 @@ struct RALInfiniteScrollVList<T:Identifiable, V: View>: View {
     @State private var activeId: T.ID?
     @State private var savedActiveId: T.ID?
 
-    var body: some View {
+    public var body: some View {
         
         ScrollViewReader { scrollProxy in
             
             ScrollView {
-                LazyVStack {
+                VStack {
                     if isLoading && scrollDirection == .upward {
                         progressView()
                     }

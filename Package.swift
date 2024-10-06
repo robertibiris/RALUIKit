@@ -4,23 +4,23 @@
 import PackageDescription
 
 let package = Package(
-    name: "RALInfiniteScrollVList",
+    name: "RALUIKit",
     platforms: [
         .iOS(.v17)
     ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
-            name: "RALInfiniteScrollVList",
-            targets: ["RALInfiniteScrollVList"]),
+            name: "RALUIKit",
+            targets: ["RALUIKit"]),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "RALInfiniteScrollVList"),
+            name: "RALUIKit"),
         .testTarget(
-            name: "RALInfiniteScrollVListTests",
-            dependencies: ["RALInfiniteScrollVList"]),
+            name: "RALUIKitTests",
+            dependencies: ["RALUIKit"]),
     ]
 )

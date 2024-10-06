@@ -1,5 +1,5 @@
 import XCTest
-@testable import RALInfiniteScrollVList
+@testable import RALUIKit
 
 final class RALInfiniteScrollVListTests: XCTestCase {
     func testExample() throws {
