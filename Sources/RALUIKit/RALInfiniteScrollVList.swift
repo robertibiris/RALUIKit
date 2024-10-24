@@ -99,8 +99,8 @@ public struct RALInfiniteScrollVList<T: Identifiable, V: View>: View {
 // import SwiftUI
 
 open class RALInfiniteScrollVListVM<T: Identifiable>: ObservableObject {
-    @Published public var items: [T]
-    @Published public var isLoading: Bool = false
+    @MainActor @Published public var items: [T] = []
+    @MainActor @Published public var isLoading: Bool = false
     
     private let fetchNextPage: @Sendable () async throws -> [T]
     let scrollDirection: RALInfiniteScrollVListScrollDirection
@@ -108,25 +108,24 @@ open class RALInfiniteScrollVListVM<T: Identifiable>: ObservableObject {
     public init(initialItems: [T] = [],
          fetchNextPage: @escaping @Sendable () async throws -> [T],
          scrollDirection: RALInfiniteScrollVListScrollDirection) {
-        self.items = initialItems
         self.fetchNextPage = fetchNextPage
         self.scrollDirection = scrollDirection
+        
+        Task {
+            await MainActor.run { self.items = initialItems }
+        }
     }
 
-    public func loadNextPage() async {
-        guard !isLoading else { return }
-        // #TODO: isLoading issue: "Publishing changes from background threads is not allowed; make sure to publish values from the main thread (via operators like receive(on:)) on model updates"
-        // consider adding to MainActor (along with items property) to get compiler checks
+    @MainActor public func loadNextPage() async {
+        guard await !isLoading else { return }
         isLoading = true
         do {
             let newItems = try await fetchNextPage()
-            DispatchQueue.main.async {
-                switch self.scrollDirection {
-                case .upward:
-                    self.items.insert(contentsOf: newItems, at: 0)
-                case .downward:
-                    self.items.append(contentsOf: newItems)
-                }
+            switch self.scrollDirection {
+            case .upward:
+                self.items.insert(contentsOf: newItems, at: 0)
+            case .downward:
+                self.items.append(contentsOf: newItems)
             }
         } catch {
             print("Failed to fetch items: \(error)")
