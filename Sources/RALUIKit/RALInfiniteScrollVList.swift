@@ -14,12 +14,15 @@ public struct RALInfiniteScrollVList<T: Identifiable, V: View>: View {
     public let scrollDirection: ScrollDirection
     
     @ObservedObject private var viewModel: RALInfiniteScrollVListVM<T>
+    private let infiniteScrollGeometryHelper: InfiniteScrollGeometryHelper
 
     public init(viewModel: RALInfiniteScrollVListVM<T>,
-                itemViewProvider: @escaping (T) -> V) {
+                itemViewProvider: @escaping (T) -> V,
+                infiniteScrollGeometryHelper: InfiniteScrollGeometryHelper = RALInfiniteScrollGeometryHelper()) {
         self.viewModel = viewModel
         self.itemViewProvider = itemViewProvider
         self.scrollDirection = viewModel.scrollDirection
+        self.infiniteScrollGeometryHelper = infiniteScrollGeometryHelper
     }
 
     private let kScrollViewCoordSpaceName = "scroll_view"
@@ -72,64 +75,10 @@ public struct RALInfiniteScrollVList<T: Identifiable, V: View>: View {
     }
     
     private func checkAndFetchNextPageIfNeeded(withOld oldFrame: CGRect, andNew frame: CGRect, containerCoordName: String) {
-        guard (checkNeedsToLoadMore(withOld: oldFrame, andNew: frame)) else { return }
+        guard infiniteScrollGeometryHelper.checkNeedsToLoadMore(withOld: oldFrame, andNew: frame, scrollDirection: scrollDirection, isLoading: viewModel.isLoading) else { return }
         Task {
             await viewModel.loadNextPage()
         }
     }
-    
-    private func checkNeedsToLoadMore(withOld oldFrame: CGRect, andNew frame: CGRect) -> Bool {
-        let threshold: CGFloat = 5.0
-        let reachedLimit: Bool
-        
-        let scrollViewHeightChanged = oldFrame.size.height != frame.size.height
-        guard !viewModel.isLoading, !scrollViewHeightChanged else { return false }
-
-        switch scrollDirection {
-        case .upward:
-            reachedLimit = (frame.minY > oldFrame.minY + threshold)
-        case .downward:
-            reachedLimit = (frame.maxY < oldFrame.maxY - threshold)
-        }
-        return reachedLimit
-    }
 }
 
-
-// import SwiftUI
-
-open class RALInfiniteScrollVListVM<T: Identifiable>: ObservableObject {
-    @MainActor @Published public var items: [T] = []
-    @MainActor @Published public var isLoading: Bool = false
-    
-    private let fetchNextPage: @Sendable () async throws -> [T]
-    let scrollDirection: RALInfiniteScrollVListScrollDirection
-
-    public init(initialItems: [T] = [],
-         fetchNextPage: @escaping @Sendable () async throws -> [T],
-         scrollDirection: RALInfiniteScrollVListScrollDirection) {
-        self.fetchNextPage = fetchNextPage
-        self.scrollDirection = scrollDirection
-        
-        Task {
-            await MainActor.run { self.items = initialItems }
-        }
-    }
-
-    @MainActor public func loadNextPage() async {
-        guard await !isLoading else { return }
-        isLoading = true
-        do {
-            let newItems = try await fetchNextPage()
-            switch self.scrollDirection {
-            case .upward:
-                self.items.insert(contentsOf: newItems, at: 0)
-            case .downward:
-                self.items.append(contentsOf: newItems)
-            }
-        } catch {
-            print("Failed to fetch items: \(error)")
-        }
-        isLoading = false
-    }
-}
